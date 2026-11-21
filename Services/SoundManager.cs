@@ -37,22 +37,30 @@ namespace FlappyBird.Services
                 _jumpPlayer = new SoundPlayer(new MemoryStream(jumpWav));
                 _jumpPlayer.LoadAsync();
 
-                // 2. Skor sesi (İki tonlu parlak boru geçme sesi)
-                byte[] scoreWav = GenerateWav(sampleRate: 22050, durationMs: 140, (t, dur) =>
+                // 2. Skor sesi (Boru geçme tık-çan sesi)
+                byte[] scoreWav = GenerateWav(sampleRate: 22050, durationMs: 130, (t, dur) =>
                 {
-                    double freq = t < 0.07 ? 988.0 : 1319.0;
+                    double freq = t < 0.06 ? 880.0 : 1174.0;
                     double env = 1.0 - (t / dur) * 0.5;
                     return Math.Sin(2.0 * Math.PI * freq * t) * env;
                 });
                 _scorePlayer = new SoundPlayer(new MemoryStream(scoreWav));
                 _scorePlayer.LoadAsync();
 
-                // 3. Altın / Yıldız Toplama Sesi (Parlak sihirli çan tınısı)
-                byte[] coinWav = GenerateWav(sampleRate: 22050, durationMs: 160, (t, dur) =>
+                // 3. Altın / Yıldız Toplama Sesi (Çok tatlı, pırıltılı kristal "Ba-Bling!" arcade sesi)
+                // B5 (988Hz) -> E6 (1319Hz) -> C7 (2093Hz) üç aşamalı yükselen sihirli tını
+                byte[] coinWav = GenerateWav(sampleRate: 22050, durationMs: 220, (t, dur) =>
                 {
-                    double freq = t < 0.08 ? 1568.0 : 2093.0; // G6 -> C7
-                    double env = Math.Exp(-7.0 * (t / dur));
-                    return (Math.Sin(2.0 * Math.PI * freq * t) + 0.3 * Math.Sin(4.0 * Math.PI * freq * t)) * env;
+                    double freq;
+                    if (t < 0.035) freq = 987.77;        // B5
+                    else if (t < 0.080) freq = 1318.51;  // E6
+                    else freq = 2093.00;                 // C7 (Yankılanan kristal çınlama)
+
+                    double env = Math.Exp(-5.2 * (t / dur));
+                    double harmonic = 0.65 * Math.Sin(2.0 * Math.PI * freq * t)
+                                    + 0.25 * Math.Sin(4.0 * Math.PI * freq * t)
+                                    + 0.10 * Math.Sin(6.0 * Math.PI * freq * t);
+                    return harmonic * env;
                 });
                 _coinPlayer = new SoundPlayer(new MemoryStream(coinWav));
                 _coinPlayer.LoadAsync();
