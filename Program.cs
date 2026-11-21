@@ -41,18 +41,17 @@ namespace FlappyBird
                 bmp1.Save(Path.Combine(screenshotsDir, "menu.png"), ImageFormat.Png);
             }
 
-            // 2. Ekran Görüntüsü: Oyun İçi (Gameplay)
+            // 2. Ekran Görüntüsü: Oyun İçi (Gameplay - Mavi Kuş kostümü ile)
             using (Bitmap bmp2 = new Bitmap(width, height))
             using (Graphics g2 = Graphics.FromImage(bmp2))
             using (GameEngine engine2 = new GameEngine(width, height))
             {
+                engine2.Bird.Skin = BirdSkin.SkyBlue; // Mavi Kuş
                 engine2.Flap(); // Playing moduna geçir
-                // Birkaç simülasyon adımı işlet
                 for (int i = 0; i < 40; i++)
                 {
                     engine2.Update();
                 }
-                // Kuşu ve boruyu güzel bir pozisyona ayarla
                 engine2.Bird.Y = 230;
                 engine2.Bird.VelocityY = -2f;
                 engine2.ScoreManager.IncrementScore();
@@ -73,16 +72,15 @@ namespace FlappyBird
             using (Graphics g3 = Graphics.FromImage(bmp3))
             using (GameEngine engine3 = new GameEngine(width, height))
             {
+                engine3.Bird.Skin = BirdSkin.RubyRed; // Kırmızı Kuş
                 engine3.Flap();
                 for (int i = 0; i < 22; i++)
                 {
                     engine3.ScoreManager.IncrementScore();
                 }
-                // Kuş zemine çarpmış pozisyon
                 engine3.Bird.Y = height - engine3.Ground.Height - engine3.Bird.Height;
                 engine3.Bird.IsAlive = false;
 
-                // Game Over durumunu tetikle
                 typeof(GameEngine)
                     .GetProperty("State")?
                     .SetValue(engine3, GameState.GameOver);

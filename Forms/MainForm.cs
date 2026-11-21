@@ -69,6 +69,12 @@ namespace FlappyBird.Forms
                     e.Handled = true;
                     break;
 
+                case Keys.C:
+                case Keys.Tab:
+                    _engine.CycleBirdSkin();
+                    e.Handled = true;
+                    break;
+
                 case Keys.M:
                     _engine.SoundManager.SoundEnabled = !_engine.SoundManager.SoundEnabled;
                     e.Handled = true;

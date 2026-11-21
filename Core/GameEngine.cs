@@ -151,6 +151,18 @@ namespace FlappyBird.Core
         }
 
         /// <summary>
+        /// Kuş kostümünü (rengini) bir sonrakine geçirir.
+        /// </summary>
+        public void CycleBirdSkin()
+        {
+            var values = (BirdSkin[])Enum.GetValues(typeof(BirdSkin));
+            int currentIndex = Array.IndexOf(values, Bird.Skin);
+            int nextIndex = (currentIndex + 1) % values.Length;
+            Bird.Skin = values[nextIndex];
+            SoundManager.PlayScore();
+        }
+
+        /// <summary>
         /// Timer tarafından yaklaşık 60 FPS frekansla çağrılan ana oyun döngüsü metodu.
         /// </summary>
         public void Update()
@@ -403,15 +415,15 @@ namespace FlappyBird.Core
             int centerX = ScreenWidth / 2;
 
             // Başlık
-            DrawOutlinedText(g, "FLAPPY BIRD", centerX, 90, 36, Color.Gold, Color.Black);
+            DrawOutlinedText(g, "FLAPPY BIRD", centerX, 85, 36, Color.Gold, Color.Black);
 
             // Yönerge kutusu
-            int boxW = 280;
-            int boxH = 120;
+            int boxW = 290;
+            int boxH = 138;
             int boxX = centerX - (boxW / 2);
-            int boxY = 250;
+            int boxY = 245;
 
-            using (SolidBrush bannerBrush = new SolidBrush(Color.FromArgb(180, 20, 30, 40)))
+            using (SolidBrush bannerBrush = new SolidBrush(Color.FromArgb(185, 20, 30, 40)))
             {
                 g.FillRoundRectangle(bannerBrush, new Rectangle(boxX, boxY, boxW, boxH), 16);
             }
@@ -420,16 +432,17 @@ namespace FlappyBird.Core
                 g.DrawRoundRectangle(boxPen, new Rectangle(boxX, boxY, boxW, boxH), 16);
             }
 
-            using (Font textFont = new Font("Segoe UI", 11, FontStyle.Bold))
+            using (Font textFont = new Font("Segoe UI", 10.5f, FontStyle.Bold))
             {
-                DrawCenteredText(g, "Uçmak için SPACE'e Basın!", textFont, Brushes.White, centerX, boxY + 16);
-                DrawCenteredText(g, "1: Kolay | 2: Orta | 3: Zor", textFont, Brushes.Yellow, centerX, boxY + 48);
-                DrawCenteredText(g, "P: Duraklat | M: Ses Aç/Kapa", textFont, Brushes.LightSkyBlue, centerX, boxY + 80);
+                DrawCenteredText(g, "Uçmak için SPACE'e Basın!", textFont, Brushes.White, centerX, boxY + 14);
+                DrawCenteredText(g, $"< C: Kostüm: {Bird.Skin.GetDisplayName()} >", textFont, Brushes.LightGreen, centerX, boxY + 42);
+                DrawCenteredText(g, "1: Kolay | 2: Orta | 3: Zor", textFont, Brushes.Yellow, centerX, boxY + 72);
+                DrawCenteredText(g, "P: Duraklat | M: Ses Aç/Kapa", textFont, Brushes.LightSkyBlue, centerX, boxY + 102);
             }
 
             // En yüksek skor bilgisi
             string bestText = $"En Yüksek Skor: {ScoreManager.HighScore}";
-            DrawOutlinedText(g, bestText, centerX, 395, 16, Color.White, Color.Black);
+            DrawOutlinedText(g, bestText, centerX, 405, 16, Color.White, Color.Black);
         }
 
         private void DrawPausedOverlay(Graphics g)

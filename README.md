@@ -7,13 +7,13 @@
 
 Bu proje, **Nesne Tabanlı Programlama (YMH 219)** dersi laboratuvar / ek uygulama ödevleri kapsamında geliştirilmiş nesne yönelimli bir **Flappy Bird** masaüstü oyunudur.
 
-C# ve Windows Forms teknolojisi kullanılarak geliştirilen projede; form ve klavye olayları, zamanlayıcı (Timer) tabanlı oyun döngüsü, çift tamponlama (Double Buffering) ile 60 FPS akıcı GDI+ çizimi, nesne tabanlı mimari ve dosya tabanlı yüksek skor kalıcılığı uygulanmıştır.
+C# ve Windows Forms teknolojisi kullanılarak geliştirilen projede; form ve klavye olayları, zamanlayıcı (Timer) tabanlı oyun döngüsü, çift tamponlama (Double Buffering) ile 60 FPS akıcı GDI+ çizimi, nesne tabanlı mimari, karakter kostüm sistemi ve dosya tabanlı yüksek skor kalıcılığı uygulanmıştır.
 
 ---
 
 ## 📸 Ekran Görüntüleri
 
-| Başlangıç / Hazır Ekranı | Oyun İçi Oynanış | Oyun Bitti (Game Over) |
+| Başlangıç / Hazır Ekranı | Oyun İçi Oynanış (Mavi Kuş) | Oyun Bitti (Game Over) |
 | :---: | :---: | :---: |
 | ![Başlangıç Ekranı](screenshots/menu.png) | ![Oyun İçi Oynanış](screenshots/gameplay.png) | ![Oyun Bitti](screenshots/gameover.png) |
 
@@ -63,6 +63,7 @@ Veya `FlappyBird.csproj` dosyasını **Visual Studio 2022** ile açıp `F5` tuş
 | Tuş | Eylem | Açıklama |
 | :--- | :--- | :--- |
 | **SPACE** / **Yukarı Ok** / **Sol Tık** | **Zıpla (Flap)** | Kuşu yukarı doğru sıçratır; oyun hazır modundaysa oyunu başlatır. |
+| **C** / **TAB** | **Kostüm Seçimi** | Kuş rengini / kostümünü anında değiştirir (Sarı, Mavi, Kırmızı, Pembe, Altın Anka). |
 | **P** / **ESC** | **Duraklat / Devam** | Oyunu dondurur veya devam ettirir. |
 | **R** | **Yeniden Başlat** | Oyunu anında sıfırlar ve başlangıç durumuna döner. |
 | **M** | **Sesi Aç / Kapa** | Retro ses efektlerini sessize alır ya da açar. |
@@ -76,30 +77,38 @@ Veya `FlappyBird.csproj` dosyasını **Visual Studio 2022** ile açıp `F5` tuş
    - Kuş yer çekimi etkisiyle ivmeli şekilde düşer, zıplama tuşuna basıldığında dikey hız sıfırlanıp yukarı yönlü kuvvet uygulanır.
    - Hız durumuna göre kuşun baş açısı (-25° ile +70° arasında) dinamik olarak eğilir.
 
-2. **Dinamik Engel ve Geri Dönüşüm (Object Recycling):**
+2. **Karakter ve Kostüm Seçimi (Yeni Özellik!):**
+   - Oyuncu **`C`** veya **`TAB`** tuşuna basarak kuşun görünümünü anlık olarak değiştirebilir:
+     - 🟡 **Sarı (Klasik):** Orijinal nostaljik sarı kuş.
+     - 🔵 **Mavi (Fırtına):** Canlı elektrik mavisi kuş.
+     - 🔴 **Kırmızı (Ateş):** Dikkat çekici yakut kırmızısı kuş.
+     - 🌸 **Pembe (Şeker):** Tatlı pastel pembe kuş.
+     - 👑 **Altın (Efsane Anka):** Başında parıldayan taç bulunan efsanevi altın kuş!
+
+3. **Dinamik Engel ve Geri Dönüşüm (Object Recycling):**
    - Ekranda sağdan sola doğru hareket eden boru çiftleri bulunur.
    - Ekranın solundan çıkan borular bellekten silinmek yerine sıranın sonuna rastgele yüksekliklerle yeniden konumlandırılır (Nesne havuzu prensibi).
 
-3. **Hassas Çarpışma Denetimi (Collision Detection):**
+4. **Hassas Çarpışma Denetimi (Collision Detection):**
    - Kuşun hitbox'ı ile boruların dikdörtgen sınırları ve zemin çizgisi anlık kontrol edilir.
    - Oyuncuya adil oynanış sunmak adına kuş sınırlarında 3 piksellik pay bırakılmıştır.
 
-4. **Skor ve Seviye Sistemi:**
+5. **Skor ve Seviye Sistemi:**
    - Kuş boru çiftlerinin arasından her geçtiğinde skor 1 artar ve jeton sesi çalar.
    - Her 5 puanda bir oyun seviyesi artar ve oyun hızı dinamik olarak yükselir (Progresif zorluk).
 
-5. **Kalıcı En Yüksek Skor (High Score):**
+6. **Kalıcı En Yüksek Skor (High Score):**
    - En yüksek skor yerel dosya sisteminde (`highscore.txt`) saklanır; oyun kapatılıp açılsa dahi rekor korunur.
 
-6. **Zorluk Seviyeleri (İsteğe Bağlı Geliştirme):**
+7. **Zorluk Seviyeleri (İsteğe Bağlı Geliştirme):**
    - **Kolay:** Geniş boru aralığı (175px), düşük hız (2.8x), yumuşak yer çekimi.
    - **Orta:** Dengeli boru aralığı (145px), standart hız (3.6x).
    - **Zor:** Dar boru aralığı (120px), yüksek hız (4.4x), sert yer çekimi.
 
-7. **Prosedürel 8-Bit Retro Ses Efektleri (İsteğe Bağlı Geliştirme):**
+8. **Prosedürel 8-Bit Retro Ses Efektleri (İsteğe Bağlı Geliştirme):**
    - Harici ses dosyası bozulması veya yol hatalarını önlemek amacıyla zıplama, puan alma, çarpma ve ölüm sesleri doğrudan kod içerisinde PCM dalga formlarıyla üretilir.
 
-8. **Madalya Sistemi:**
+9. **Madalya Sistemi:**
    - 5+ Skor: Bronz Madalya
    - 10+ Skor: Gümüş Madalya
    - 20+ Skor: Altın Madalya
@@ -112,24 +121,29 @@ Veya `FlappyBird.csproj` dosyasını **Visual Studio 2022** ile açıp `F5` tuş
 ```
 YMH219-FlappyBird/
 ├── Core/
-│   ├── GameEngine.cs       # Oyun döngüsü, fizik, durum geçişleri ve render orkestrasyonu
-│   └── GameSettings.cs     # Zorluk dereceleri ve fizik katsayıları
+│   ├── GameEngine.cs          # Oyun döngüsü, fizik, durum geçişleri ve render orkestrasyonu
+│   └── GameSettings.cs        # Zorluk dereceleri ve fizik katsayıları
 ├── Enums/
-│   ├── GameState.cs        # Ready, Playing, Paused, GameOver durumları
-│   └── Difficulty.cs       # Easy, Medium, Hard seviyeleri
+│   ├── GameState.cs           # Ready, Playing, Paused, GameOver durumları
+│   ├── Difficulty.cs          # Easy, Medium, Hard seviyeleri
+│   └── BirdSkin.cs            # Karakter kostümleri (Sarı, Mavi, Kırmızı, Pembe, Altın)
 ├── Models/
-│   ├── Bird.cs             # Kuş nesnesi (koordinatlar, ivme, kanat animasyonu, çizim)
-│   ├── Pipe.cs             # Boru engeli (üst-alt koordinatlar, hitbox, çizim)
-│   └── Ground.cs           # Zemin nesnesi (kayan doku, çim-toprak çizimi)
+│   ├── Bird.cs                # Kuş nesnesi (fizik, kanat animasyonu, kostüm, hitbox ve çizim)
+│   ├── Pipe.cs                # Boru engeli (üst-alt koordinatlar, hitbox, çizim)
+│   └── Ground.cs              # Hareketli zemin ve çim dokusu
 ├── Services/
-│   ├── ScoreManager.cs     # Skor takibi, rekor kontrolü ve dosya kaydı (I/O)
-│   └── SoundManager.cs     # PCM ses sentezleme ve asenkron ses çalma
+│   ├── ScoreManager.cs        # Skor takibi, rekor kontrolü ve dosya I/O
+│   └── SoundManager.cs        # Bellek içi PCM ses sentezleme ve asenkron ses çalma
 ├── Forms/
-│   ├── MainForm.cs         # Form kontrolü, giriş yakalama (klavye/fare)
-│   └── MainForm.Designer.cs# Form bileşen tasarımı
+│   ├── MainForm.cs            # Form kontrolü, giriş yakalama (klavye/fare)
+│   └── MainForm.Designer.cs   # Form bileşen tasarımı
 ├── Program.cs              # Uygulama başlangıç noktası
-├── screenshots/            # README ekran görüntüleri
-└── FlappyBird.csproj       # Proje yapılandırması (.NET 8 Windows Forms)
+├── screenshots/               # README ekran görüntüleri
+│   ├── menu.png
+│   ├── gameplay.png
+│   └── gameover.png
+├── .gitignore                 # Visual Studio / .NET için tam yalıtım
+└── FlappyBird.csproj          # .NET 8.0 Windows Forms projesi
 ```
 
 ---
@@ -138,7 +152,7 @@ YMH219-FlappyBird/
 
 - Oyun penceresi klasik arcade hissiyatını korumak için 420x600 sabit çözünürlükte tasarlanmıştır (Boyutlandırma kilitlidir).
 - Ses sentezleyici Windows Media altyapısını (`System.Media.SoundPlayer`) kullandığından Windows işletim sistemi üzerinde optimize edilmiştir.
-- Gelecek versiyonlarda çoklu kuş derisi (skin) seçimi ve çevrimiçi skor tablosu (online leaderboard) entegre edilebilir.
+- Gelecek versiyonlarda çevrimiçi skor tablosu (online leaderboard) entegre edilebilir.
 
 ---
 

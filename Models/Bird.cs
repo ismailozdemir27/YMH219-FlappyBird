@@ -1,11 +1,13 @@
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using FlappyBird.Enums;
 
 namespace FlappyBird.Models
 {
     /// <summary>
     /// Oyuncunun kontrol ettiği kuş karakterini temsil eden sınıf.
-    /// Nesne tabanlı programlama ilkelerine uygun olarak fizik kuralları ve çizim metodlarını barındırır.
+    /// Nesne tabanlı programlama ilkelerine uygun olarak fizik kuralları, görünüm (skin) ve çizim metodlarını barındırır.
     /// </summary>
     public class Bird
     {
@@ -19,6 +21,7 @@ namespace FlappyBird.Models
         public float JumpStrength { get; set; } = -8.2f;
 
         public bool IsAlive { get; set; } = true;
+        public BirdSkin Skin { get; set; } = BirdSkin.ClassicYellow;
 
         private float _rotation = 0f;
         private int _wingFrame = 0;
@@ -142,7 +145,7 @@ namespace FlappyBird.Models
         }
 
         /// <summary>
-        /// Kuşu GDI+ ile vektörel ve estetik şekilde çizer.
+        /// Kuşu GDI+ ile seçili kostüme (Skin) göre estetik ve vektörel şekilde çizer.
         /// </summary>
         public void Draw(Graphics g)
         {
@@ -159,7 +162,11 @@ namespace FlappyBird.Models
             // Yumuşak kenar
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // 1. Gövde (Canlı sarı / turuncu geçişli)
+            // Seçili kostümün renk paletini belirle
+            GetSkinColors(out Color bodyTop, out Color bodyBottom, out Color bellyColor,
+                          out Color wingColor, out Color beakColor, out Color borderColor, out Color wingBorder);
+
+            // 1. Gövde
             using (GraphicsPath bodyPath = new GraphicsPath())
             {
                 Rectangle bodyRect = new Rectangle((int)X, (int)Y, Width - 6, Height);
@@ -167,25 +174,25 @@ namespace FlappyBird.Models
 
                 using (LinearGradientBrush bodyBrush = new LinearGradientBrush(
                     bodyRect,
-                    Color.FromArgb(255, 230, 40),
-                    Color.FromArgb(235, 170, 20),
+                    bodyTop,
+                    bodyBottom,
                     LinearGradientMode.Vertical))
                 {
                     g.FillPath(bodyBrush, bodyPath);
                 }
 
-                using (Pen borderPen = new Pen(Color.FromArgb(90, 50, 10), 2f))
+                using (Pen borderPen = new Pen(borderColor, 2f))
                 {
                     g.DrawPath(borderPen, bodyPath);
                 }
             }
 
-            // 2. Karın beyazı
+            // 2. Karın bölgesi
             using (GraphicsPath bellyPath = new GraphicsPath())
             {
                 Rectangle bellyRect = new Rectangle((int)X + 4, (int)Y + Height - 12, Width - 18, 10);
                 bellyPath.AddEllipse(bellyRect);
-                using (SolidBrush bellyBrush = new SolidBrush(Color.FromArgb(255, 255, 220)))
+                using (SolidBrush bellyBrush = new SolidBrush(bellyColor))
                 {
                     g.FillPath(bellyBrush, bellyPath);
                 }
@@ -197,11 +204,11 @@ namespace FlappyBird.Models
             using (GraphicsPath wingPath = new GraphicsPath())
             {
                 wingPath.AddEllipse(wingRect);
-                using (SolidBrush wingBrush = new SolidBrush(Color.FromArgb(255, 250, 240)))
+                using (SolidBrush wingBrush = new SolidBrush(wingColor))
                 {
                     g.FillPath(wingBrush, wingPath);
                 }
-                using (Pen wingPen = new Pen(Color.FromArgb(90, 50, 10), 1.6f))
+                using (Pen wingPen = new Pen(wingBorder, 1.6f))
                 {
                     g.DrawPath(wingPen, wingPath);
                 }
@@ -212,7 +219,7 @@ namespace FlappyBird.Models
             int eyeY = (int)Y + 4;
             int eyeSize = 10;
             g.FillEllipse(Brushes.White, eyeX, eyeY, eyeSize, eyeSize);
-            using (Pen eyePen = new Pen(Color.FromArgb(60, 40, 20), 1.5f))
+            using (Pen eyePen = new Pen(borderColor, 1.5f))
             {
                 g.DrawEllipse(eyePen, eyeX, eyeY, eyeSize, eyeSize);
             }
@@ -221,29 +228,107 @@ namespace FlappyBird.Models
             // Işıltı
             g.FillEllipse(Brushes.White, eyeX + 5, eyeY + 4, 1, 1);
 
-            // 5. Gaga (Turuncu sevimli gaga)
+            // 5. Gaga
             Point[] beakPoints = new Point[]
             {
                 new Point((int)X + Width - 8, (int)Y + 12),
                 new Point((int)X + Width + 5, (int)Y + 17),
                 new Point((int)X + Width - 8, (int)Y + 22)
             };
-            using (SolidBrush beakBrush = new SolidBrush(Color.FromArgb(245, 95, 20)))
+            using (SolidBrush beakBrush = new SolidBrush(beakColor))
             {
                 g.FillPolygon(beakBrush, beakPoints);
             }
-            using (Pen beakPen = new Pen(Color.FromArgb(140, 40, 0), 1.6f))
+            using (Pen beakPen = new Pen(borderColor, 1.6f))
             {
                 g.DrawPolygon(beakPen, beakPoints);
             }
 
             // 6. Yanak pembeliği
-            using (SolidBrush cheekBrush = new SolidBrush(Color.FromArgb(110, 255, 120, 140)))
+            using (SolidBrush cheekBrush = new SolidBrush(Color.FromArgb(100, 255, 120, 140)))
             {
                 g.FillEllipse(cheekBrush, (int)X + Width - 17, (int)Y + 16, 7, 5);
             }
 
+            // 7. Altın Anka için özel parıltı tacı
+            if (Skin == BirdSkin.GoldenPhoenix)
+            {
+                using (SolidBrush crownBrush = new SolidBrush(Color.FromArgb(255, 235, 30)))
+                using (Pen crownPen = new Pen(Color.FromArgb(150, 80, 0), 1.2f))
+                {
+                    Point[] crownPoints = new Point[]
+                    {
+                        new Point((int)X + 11, (int)Y),
+                        new Point((int)X + 8, (int)Y - 6),
+                        new Point((int)X + 13, (int)Y - 4),
+                        new Point((int)X + 18, (int)Y - 8),
+                        new Point((int)X + 22, (int)Y - 3),
+                        new Point((int)X + 24, (int)Y)
+                    };
+                    g.FillPolygon(crownBrush, crownPoints);
+                    g.DrawPolygon(crownPen, crownPoints);
+                }
+            }
+
             g.Restore(state);
+        }
+
+        private void GetSkinColors(
+            out Color bodyTop, out Color bodyBottom, out Color bellyColor,
+            out Color wingColor, out Color beakColor, out Color borderColor, out Color wingBorder)
+        {
+            switch (Skin)
+            {
+                case BirdSkin.SkyBlue:
+                    bodyTop = Color.FromArgb(100, 200, 255);
+                    bodyBottom = Color.FromArgb(30, 135, 240);
+                    bellyColor = Color.FromArgb(225, 248, 255);
+                    wingColor = Color.FromArgb(240, 252, 255);
+                    beakColor = Color.FromArgb(255, 140, 20);
+                    borderColor = Color.FromArgb(15, 55, 105);
+                    wingBorder = Color.FromArgb(15, 55, 105);
+                    break;
+
+                case BirdSkin.RubyRed:
+                    bodyTop = Color.FromArgb(255, 85, 85);
+                    bodyBottom = Color.FromArgb(195, 25, 30);
+                    bellyColor = Color.FromArgb(255, 225, 225);
+                    wingColor = Color.FromArgb(255, 242, 242);
+                    beakColor = Color.FromArgb(255, 205, 30);
+                    borderColor = Color.FromArgb(95, 20, 20);
+                    wingBorder = Color.FromArgb(95, 20, 20);
+                    break;
+
+                case BirdSkin.RosePink:
+                    bodyTop = Color.FromArgb(255, 145, 200);
+                    bodyBottom = Color.FromArgb(230, 85, 150);
+                    bellyColor = Color.FromArgb(255, 235, 245);
+                    wingColor = Color.FromArgb(255, 250, 253);
+                    beakColor = Color.FromArgb(255, 150, 30);
+                    borderColor = Color.FromArgb(95, 25, 55);
+                    wingBorder = Color.FromArgb(95, 25, 55);
+                    break;
+
+                case BirdSkin.GoldenPhoenix:
+                    bodyTop = Color.FromArgb(255, 235, 75);
+                    bodyBottom = Color.FromArgb(235, 160, 0);
+                    bellyColor = Color.FromArgb(255, 250, 195);
+                    wingColor = Color.FromArgb(255, 245, 145);
+                    beakColor = Color.FromArgb(255, 80, 0);
+                    borderColor = Color.FromArgb(105, 60, 0);
+                    wingBorder = Color.FromArgb(105, 60, 0);
+                    break;
+
+                default: // ClassicYellow
+                    bodyTop = Color.FromArgb(255, 230, 40);
+                    bodyBottom = Color.FromArgb(235, 170, 20);
+                    bellyColor = Color.FromArgb(255, 255, 220);
+                    wingColor = Color.FromArgb(255, 250, 240);
+                    beakColor = Color.FromArgb(245, 95, 20);
+                    borderColor = Color.FromArgb(90, 50, 10);
+                    wingBorder = Color.FromArgb(90, 50, 10);
+                    break;
+            }
         }
     }
 }
