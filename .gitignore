@@ -3,6 +3,7 @@ bin/
 obj/
 out/
 [Bb]uild/
+publish/
 
 ## Visual Studio cache & temporary files
 .vs/
