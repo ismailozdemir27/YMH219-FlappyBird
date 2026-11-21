@@ -37,6 +37,7 @@ Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 
-## Game runtime saves
+## Game runtime saves and local shortcuts
 highscore.json
 highscore.txt
+*.bat
