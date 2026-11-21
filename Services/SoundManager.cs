@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Media;
 
@@ -15,6 +16,8 @@ namespace FlappyBird.Services
         private SoundPlayer? _scorePlayer;
         private SoundPlayer? _hitPlayer;
         private SoundPlayer? _diePlayer;
+        private SoundPlayer? _coinPlayer;
+        private SoundPlayer? _recordPlayer;
 
         public SoundManager()
         {
@@ -25,7 +28,7 @@ namespace FlappyBird.Services
         {
             try
             {
-                // Zıplama sesi (Yükselen retro ton)
+                // 1. Zıplama sesi (Yükselen retro ton)
                 byte[] jumpWav = GenerateWav(sampleRate: 22050, durationMs: 90, (t, dur) =>
                 {
                     double freq = 400.0 + (t / dur) * 450.0;
@@ -34,7 +37,7 @@ namespace FlappyBird.Services
                 _jumpPlayer = new SoundPlayer(new MemoryStream(jumpWav));
                 _jumpPlayer.LoadAsync();
 
-                // Skor sesi (İki tonlu parlak jeton sesi)
+                // 2. Skor sesi (İki tonlu parlak boru geçme sesi)
                 byte[] scoreWav = GenerateWav(sampleRate: 22050, durationMs: 140, (t, dur) =>
                 {
                     double freq = t < 0.07 ? 988.0 : 1319.0;
@@ -44,7 +47,32 @@ namespace FlappyBird.Services
                 _scorePlayer = new SoundPlayer(new MemoryStream(scoreWav));
                 _scorePlayer.LoadAsync();
 
-                // Çarpma sesi (Tok vuruş)
+                // 3. Altın / Yıldız Toplama Sesi (Parlak sihirli çan tınısı)
+                byte[] coinWav = GenerateWav(sampleRate: 22050, durationMs: 160, (t, dur) =>
+                {
+                    double freq = t < 0.08 ? 1568.0 : 2093.0; // G6 -> C7
+                    double env = Math.Exp(-7.0 * (t / dur));
+                    return (Math.Sin(2.0 * Math.PI * freq * t) + 0.3 * Math.Sin(4.0 * Math.PI * freq * t)) * env;
+                });
+                _coinPlayer = new SoundPlayer(new MemoryStream(coinWav));
+                _coinPlayer.LoadAsync();
+
+                // 4. Yeni En Yüksek Skor / Rekor Fanfarı (Yükselen 4 tonlu zafer melodisi C5-E5-G5-C6)
+                byte[] recordWav = GenerateWav(sampleRate: 22050, durationMs: 420, (t, dur) =>
+                {
+                    double freq;
+                    if (t < 0.10) freq = 523.25;       // C5
+                    else if (t < 0.20) freq = 659.25;  // E5
+                    else if (t < 0.30) freq = 783.99;  // G5
+                    else freq = 1046.50;               // C6 Zirve tonu
+
+                    double env = 1.0 - (t / dur) * 0.35;
+                    return (Math.Sin(2.0 * Math.PI * freq * t) + 0.25 * Math.Sin(4.0 * Math.PI * freq * t)) * env;
+                });
+                _recordPlayer = new SoundPlayer(new MemoryStream(recordWav));
+                _recordPlayer.LoadAsync();
+
+                // 5. Çarpma sesi (Tok vuruş)
                 byte[] hitWav = GenerateWav(sampleRate: 22050, durationMs: 120, (t, dur) =>
                 {
                     double freq = 180.0 - (t / dur) * 110.0;
@@ -54,7 +82,7 @@ namespace FlappyBird.Services
                 _hitPlayer = new SoundPlayer(new MemoryStream(hitWav));
                 _hitPlayer.LoadAsync();
 
-                // Düşüş / Game Over sesi (Düşen hüzünlü ton)
+                // 6. Düşüş / Game Over sesi (Düşen hüzünlü ton)
                 byte[] dieWav = GenerateWav(sampleRate: 22050, durationMs: 250, (t, dur) =>
                 {
                     double freq = 420.0 - (t / dur) * 310.0;
@@ -80,6 +108,18 @@ namespace FlappyBird.Services
         {
             if (!SoundEnabled || _scorePlayer == null) return;
             try { _scorePlayer.Play(); } catch { }
+        }
+
+        public void PlayCoin()
+        {
+            if (!SoundEnabled || _coinPlayer == null) return;
+            try { _coinPlayer.Play(); } catch { }
+        }
+
+        public void PlayRecordFanfare()
+        {
+            if (!SoundEnabled || _recordPlayer == null) return;
+            try { _recordPlayer.Play(); } catch { }
         }
 
         public void PlayHit()
@@ -151,6 +191,8 @@ namespace FlappyBird.Services
             _scorePlayer?.Dispose();
             _hitPlayer?.Dispose();
             _diePlayer?.Dispose();
+            _coinPlayer?.Dispose();
+            _recordPlayer?.Dispose();
         }
     }
 }

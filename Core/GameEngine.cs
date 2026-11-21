@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using FlappyBird.Enums;
@@ -18,14 +20,17 @@ namespace FlappyBird.Core
 
         public Bird Bird { get; private set; }
         public List<Pipe> Pipes { get; private set; }
+        public List<Coin> Coins { get; private set; }
         public Ground Ground { get; private set; }
         public ScoreManager ScoreManager { get; private set; }
         public SoundManager SoundManager { get; private set; }
         public GameSettings Settings { get; private set; }
 
         public GameState State { get; private set; }
+        public GameTheme CurrentTheme { get; set; } = GameTheme.Day;
         public float CurrentSpeed { get; private set; }
         public int Level { get; private set; } = 1;
+        public int CollectedCoins { get; private set; } = 0;
 
         public event Action? OnGameOver;
         public event Action? OnScoreChanged;
@@ -34,9 +39,11 @@ namespace FlappyBird.Core
         private double _gameTimeSeconds = 0;
         private readonly float _birdStartX = 75;
         private readonly float _birdStartY = 195;
+        private bool _hasPlayedRecordFanfare = false;
 
-        // Arka plan bulutları için liste
+        // Arka plan bulutları ve yıldızlar
         private readonly List<PointF> _clouds = new List<PointF>();
+        private readonly List<PointF> _stars = new List<PointF>();
 
         public GameEngine(int screenWidth, int screenHeight)
         {
@@ -50,17 +57,30 @@ namespace FlappyBird.Core
             Bird = new Bird(_birdStartX, _birdStartY);
             Ground = new Ground();
             Pipes = new List<Pipe>();
+            Coins = new List<Coin>();
 
             InitializeClouds();
+            InitializeStars();
             ResetGame();
         }
 
         private void InitializeClouds()
         {
             _clouds.Clear();
-            _clouds.Add(new PointF(40, 80));
-            _clouds.Add(new PointF(180, 140));
-            _clouds.Add(new PointF(320, 60));
+            _clouds.Add(new PointF(40, 75));
+            _clouds.Add(new PointF(185, 135));
+            _clouds.Add(new PointF(330, 55));
+        }
+
+        private void InitializeStars()
+        {
+            _stars.Clear();
+            for (int i = 0; i < 40; i++)
+            {
+                float sx = _random.Next(10, ScreenWidth - 10);
+                float sy = _random.Next(15, ScreenHeight - 140);
+                _stars.Add(new PointF(sx, sy));
+            }
         }
 
         /// <summary>
@@ -71,6 +91,8 @@ namespace FlappyBird.Core
             State = GameState.Ready;
             CurrentSpeed = Settings.BasePipeSpeed;
             Level = 1;
+            CollectedCoins = 0;
+            _hasPlayedRecordFanfare = false;
 
             ScoreManager.ResetScore();
             Bird.Reset(_birdStartX, _birdStartY);
@@ -78,11 +100,19 @@ namespace FlappyBird.Core
             Bird.JumpStrength = Settings.JumpStrength;
 
             Pipes.Clear();
-            // Ekran üzerinde dönecek en az 3 engel oluştur
+            Coins.Clear();
+
+            // Ekran üzerinde dönecek boru çiftleri ve toplanabilir altınlar
             float startPipeX = ScreenWidth + 80;
             for (int i = 0; i < 3; i++)
             {
-                Pipes.Add(CreateNewPipe(startPipeX + (i * Settings.PipeSpacing)));
+                float px = startPipeX + (i * Settings.PipeSpacing);
+                Pipe pipe = CreateNewPipe(px);
+                Pipes.Add(pipe);
+
+                // Her borunun boşluğuna toplanabilir altın ekle
+                float coinY = pipe.TopHeight + (pipe.Gap / 2f);
+                Coins.Add(new Coin(pipe.X + (pipe.Width / 2f), coinY));
             }
         }
 
@@ -92,12 +122,12 @@ namespace FlappyBird.Core
         private Pipe CreateNewPipe(float x)
         {
             int groundY = ScreenHeight - Ground.Height;
-            int minPipeHeight = 60;
+            int minPipeHeight = 55;
             int maxTopHeight = groundY - Settings.PipeGap - minPipeHeight;
 
             if (maxTopHeight < minPipeHeight)
             {
-                maxTopHeight = minPipeHeight + 40;
+                maxTopHeight = minPipeHeight + 35;
             }
 
             int topHeight = _random.Next(minPipeHeight, maxTopHeight);
@@ -163,6 +193,18 @@ namespace FlappyBird.Core
         }
 
         /// <summary>
+        /// Arka plan temasını değiştirir (Gündüz -> Gün Batımı -> Gece).
+        /// </summary>
+        public void CycleTheme()
+        {
+            var values = (GameTheme[])Enum.GetValues(typeof(GameTheme));
+            int currentIndex = Array.IndexOf(values, CurrentTheme);
+            int nextIndex = (currentIndex + 1) % values.Length;
+            CurrentTheme = values[nextIndex];
+            SoundManager.PlayScore();
+        }
+
+        /// <summary>
         /// Timer tarafından yaklaşık 60 FPS frekansla çağrılan ana oyun döngüsü metodu.
         /// </summary>
         public void Update()
@@ -209,24 +251,63 @@ namespace FlappyBird.Core
             // Zemin kayması
             Ground.Update(CurrentSpeed);
 
-            // Boruların hareketi ve yeniden konumlandırılması
+            // Boruların ve altınların hareketi
             float maxRightX = 0;
             foreach (var p in Pipes)
             {
                 if (p.X > maxRightX) maxRightX = p.X;
             }
 
+            Rectangle birdBox = Bird.Hitbox;
+
             for (int i = 0; i < Pipes.Count; i++)
             {
                 Pipe pipe = Pipes[i];
                 pipe.Update(CurrentSpeed);
+
+                // Altın hareketi ve toplama denetimi
+                if (i < Coins.Count)
+                {
+                    Coin coin = Coins[i];
+                    coin.Update(CurrentSpeed);
+
+                    if (!coin.IsCollected && birdBox.IntersectsWith(coin.Hitbox))
+                    {
+                        coin.IsCollected = true;
+                        CollectedCoins++;
+
+                        // Altın alınca skora +1 ekle ve rekor kontrolü yap
+                        bool newBest = ScoreManager.IncrementScore();
+                        if (newBest && ScoreManager.CurrentScore > 1 && !_hasPlayedRecordFanfare)
+                        {
+                            _hasPlayedRecordFanfare = true;
+                            SoundManager.PlayRecordFanfare(); // Rekor kırılınca özel zafer sesi!
+                        }
+                        else
+                        {
+                            SoundManager.PlayCoin(); // Özel altın çan sesi!
+                        }
+
+                        OnScoreChanged?.Invoke();
+                    }
+                }
 
                 // Skor kontrolü: Kuş borunun ortasını geçtiğinde skor ekle
                 if (!pipe.Passed && pipe.X + (pipe.Width / 2) < Bird.X)
                 {
                     pipe.Passed = true;
                     bool newBest = ScoreManager.IncrementScore();
-                    SoundManager.PlayScore();
+
+                    if (newBest && ScoreManager.CurrentScore > 1 && !_hasPlayedRecordFanfare)
+                    {
+                        _hasPlayedRecordFanfare = true;
+                        SoundManager.PlayRecordFanfare(); // Rekor kırılınca özel zafer sesi!
+                    }
+                    else
+                    {
+                        SoundManager.PlayScore();
+                    }
+
                     OnScoreChanged?.Invoke();
 
                     // Seviye ve hız artışı (Her 5 puanda bir hız %5 artar)
@@ -242,7 +323,20 @@ namespace FlappyBird.Core
                 if (pipe.X + pipe.Width < -10)
                 {
                     float nextX = Math.Max(ScreenWidth + 30, maxRightX + Settings.PipeSpacing);
-                    Pipes[i] = CreateNewPipe(nextX);
+                    Pipe newPipe = CreateNewPipe(nextX);
+                    Pipes[i] = newPipe;
+
+                    // Yeni borunun ortasına yeni bir altın koy
+                    float coinY = newPipe.TopHeight + (newPipe.Gap / 2f);
+                    if (i < Coins.Count)
+                    {
+                        Coins[i] = new Coin(nextX + (newPipe.Width / 2f), coinY);
+                    }
+                    else
+                    {
+                        Coins.Add(new Coin(nextX + (newPipe.Width / 2f), coinY));
+                    }
+
                     maxRightX = nextX;
                 }
             }
@@ -296,7 +390,7 @@ namespace FlappyBird.Core
         {
             g.SmoothingMode = SmoothingMode.HighQuality;
 
-            // 1. Gökyüzü arka planı (Gradient)
+            // 1. Gökyüzü arka planı ve tema öğeleri (Güneş, Ay, Yıldızlar, Şehir)
             DrawSky(g);
 
             // 2. Bulutlar
@@ -308,16 +402,22 @@ namespace FlappyBird.Core
                 pipe.Draw(g, ScreenHeight, Ground.Height);
             }
 
-            // 4. Zemin
+            // 4. Toplanabilir Altınlar
+            foreach (var coin in Coins)
+            {
+                coin.Draw(g);
+            }
+
+            // 5. Zemin
             Ground.Draw(g, ScreenWidth, ScreenHeight);
 
-            // 5. Kuş
+            // 6. Kuş
             Bird.Draw(g);
 
-            // 6. HUD / Arayüz Bilgileri
+            // 7. HUD / Arayüz Bilgileri
             DrawHUD(g);
 
-            // 7. Durum Katmanları (Ready / Paused / Game Over)
+            // 8. Durum Katmanları (Ready / Paused / Game Over)
             if (State == GameState.Ready)
             {
                 DrawReadyOverlay(g);
@@ -334,30 +434,110 @@ namespace FlappyBird.Core
 
         private void DrawSky(Graphics g)
         {
+            Color topColor, bottomColor, cityColor;
+
+            switch (CurrentTheme)
+            {
+                case GameTheme.Sunset:
+                    topColor = Color.FromArgb(235, 95, 55);    // Sıcak kızıl gün batımı
+                    bottomColor = Color.FromArgb(255, 195, 115);
+                    cityColor = Color.FromArgb(160, 85, 45, 75);
+                    break;
+
+                case GameTheme.Night:
+                    topColor = Color.FromArgb(12, 18, 48);     // Koyu lacivert gece
+                    bottomColor = Color.FromArgb(32, 45, 95);
+                    cityColor = Color.FromArgb(210, 15, 20, 38);
+                    break;
+
+                default: // Day
+                    topColor = Color.FromArgb(112, 197, 206);   // Klasik açık mavi
+                    bottomColor = Color.FromArgb(178, 230, 236);
+                    cityColor = Color.FromArgb(140, 185, 218, 200);
+                    break;
+            }
+
+            // Gökyüzü gradyanı
             using (LinearGradientBrush skyBrush = new LinearGradientBrush(
                 new Rectangle(0, 0, ScreenWidth, ScreenHeight - Ground.Height),
-                Color.FromArgb(112, 197, 206), // Flappy retro gökyüzü mavisi
-                Color.FromArgb(178, 230, 236),
+                topColor,
+                bottomColor,
                 LinearGradientMode.Vertical))
             {
                 g.FillRectangle(skyBrush, 0, 0, ScreenWidth, ScreenHeight);
             }
 
+            // Gece Teması: Yıldızlar ve Hilal Ay
+            if (CurrentTheme == GameTheme.Night)
+            {
+                // Yıldızlar
+                using (SolidBrush starBrush = new SolidBrush(Color.FromArgb(220, 255, 255, 255)))
+                {
+                    foreach (var s in _stars)
+                    {
+                        g.FillEllipse(starBrush, s.X, s.Y, 2.2f, 2.2f);
+                    }
+                }
+
+                // Hilal Ay
+                int moonX = ScreenWidth - 75;
+                int moonY = 45;
+                using (SolidBrush moonBrush = new SolidBrush(Color.FromArgb(255, 250, 205)))
+                using (SolidBrush cutBrush = new SolidBrush(topColor))
+                {
+                    g.FillEllipse(moonBrush, moonX, moonY, 36, 36);
+                    g.FillEllipse(cutBrush, moonX - 10, moonY - 3, 34, 34); // Hilal kesiği
+                }
+            }
+            // Gün Batımı Teması: Batan Güneş
+            else if (CurrentTheme == GameTheme.Sunset)
+            {
+                int sunX = ScreenWidth - 110;
+                int sunY = ScreenHeight - Ground.Height - 115;
+                using (SolidBrush sunGlow = new SolidBrush(Color.FromArgb(90, 255, 220, 100)))
+                using (SolidBrush sunBody = new SolidBrush(Color.FromArgb(255, 235, 120)))
+                {
+                    g.FillEllipse(sunGlow, sunX - 12, sunY - 12, 64, 64);
+                    g.FillEllipse(sunBody, sunX, sunY, 40, 40);
+                }
+            }
+
             // Ufuk çizgisi silüeti (Şehir binaları)
             int cityY = ScreenHeight - Ground.Height - 45;
-            using (SolidBrush cityBrush = new SolidBrush(Color.FromArgb(140, 185, 218, 200)))
+            using (SolidBrush brush = new SolidBrush(cityColor))
             {
-                for (int x = 0; x < ScreenWidth; x += 40)
+                for (int x = 0; x < ScreenWidth; x += 38)
                 {
-                    int h = 25 + ((x * 17) % 25);
-                    g.FillRectangle(cityBrush, x, cityY + (45 - h), 36, h);
+                    int h = 26 + ((x * 19) % 26);
+                    g.FillRectangle(brush, x, cityY + (45 - h), 34, h);
+
+                    // Gece temasında binalarda yanan sıcak pencereler
+                    if (CurrentTheme == GameTheme.Night)
+                    {
+                        using (SolidBrush windowBrush = new SolidBrush(Color.FromArgb(240, 255, 230, 110)))
+                        {
+                            int winY = cityY + (45 - h) + 6;
+                            if ((x % 2 == 0) && winY < cityY + 35)
+                            {
+                                g.FillRectangle(windowBrush, x + 6, winY, 5, 5);
+                                g.FillRectangle(windowBrush, x + 16, winY, 5, 5);
+                            }
+                        }
+                    }
                 }
             }
         }
 
         private void DrawClouds(Graphics g)
         {
-            using (SolidBrush cloudBrush = new SolidBrush(Color.FromArgb(210, 255, 255, 255)))
+            Color cloudColor = CurrentTheme switch
+            {
+                GameTheme.Sunset => Color.FromArgb(170, 255, 215, 200),
+                GameTheme.Night => Color.FromArgb(60, 180, 200, 255),
+                _ => Color.FromArgb(210, 255, 255, 255)
+            };
+
+            using (SolidBrush cloudBrush = new SolidBrush(cloudColor))
             {
                 foreach (var c in _clouds)
                 {
@@ -387,6 +567,7 @@ namespace FlappyBird.Core
                         path.AddString(scoreText, ff, (int)FontStyle.Bold, 48, new PointF(x, y), StringFormat.GenericDefault);
                         using (Pen outlinePen = new Pen(Color.FromArgb(20, 20, 20), 5))
                         {
+                            outlinePen.LineJoin = LineJoin.Round;
                             g.DrawPath(outlinePen, path);
                         }
                         g.FillPath(Brushes.White, path);
@@ -394,11 +575,15 @@ namespace FlappyBird.Core
                 }
             }
 
-            // Üst bar mini bilgi (Zorluk Seviyesi ve Hız)
-            string diffText = $"Mod: {Settings.CurrentDifficulty} | Hız: {CurrentSpeed:F1}x";
+            // Üst bar mini bilgiler: Mod, Tema ve Toplanan Altın Sayısı
+            string diffText = $"Mod: {Settings.CurrentDifficulty} | Tema: {CurrentTheme.GetDisplayName()}";
             using (Font miniFont = new Font("Segoe UI", 9, FontStyle.Bold))
             {
                 g.DrawString(diffText, miniFont, Brushes.White, 12, 10);
+
+                // Toplanan Altın Sayacı
+                string coinHud = $"★ Altın: {CollectedCoins}";
+                g.DrawString(coinHud, miniFont, Brushes.Gold, 12, 28);
             }
 
             // Ses durumu
@@ -415,15 +600,15 @@ namespace FlappyBird.Core
             int centerX = ScreenWidth / 2;
 
             // Başlık
-            DrawOutlinedText(g, "FLAPPY BIRD", centerX, 85, 36, Color.Gold, Color.Black);
+            DrawOutlinedText(g, "FLAPPY BIRD", centerX, 80, 36, Color.Gold, Color.Black);
 
             // Yönerge kutusu
-            int boxW = 290;
-            int boxH = 138;
+            int boxW = 296;
+            int boxH = 158;
             int boxX = centerX - (boxW / 2);
-            int boxY = 245;
+            int boxY = 240;
 
-            using (SolidBrush bannerBrush = new SolidBrush(Color.FromArgb(185, 20, 30, 40)))
+            using (SolidBrush bannerBrush = new SolidBrush(Color.FromArgb(190, 15, 25, 35)))
             {
                 g.FillRoundRectangle(bannerBrush, new Rectangle(boxX, boxY, boxW, boxH), 16);
             }
@@ -435,14 +620,15 @@ namespace FlappyBird.Core
             using (Font textFont = new Font("Segoe UI", 10.5f, FontStyle.Bold))
             {
                 DrawCenteredText(g, "Uçmak için SPACE'e Basın!", textFont, Brushes.White, centerX, boxY + 14);
-                DrawCenteredText(g, $"< C: Kostüm: {Bird.Skin.GetDisplayName()} >", textFont, Brushes.LightGreen, centerX, boxY + 42);
-                DrawCenteredText(g, "1: Kolay | 2: Orta | 3: Zor", textFont, Brushes.Yellow, centerX, boxY + 72);
-                DrawCenteredText(g, "P: Duraklat | M: Ses Aç/Kapa", textFont, Brushes.LightSkyBlue, centerX, boxY + 102);
+                DrawCenteredText(g, $"< C: Kuş: {Bird.Skin.GetDisplayName()} >", textFont, Brushes.LightGreen, centerX, boxY + 41);
+                DrawCenteredText(g, $"< T: Tema: {CurrentTheme.GetDisplayName()} >", textFont, Brushes.LightSkyBlue, centerX, boxY + 68);
+                DrawCenteredText(g, "1: Kolay | 2: Orta | 3: Zor", textFont, Brushes.Yellow, centerX, boxY + 95);
+                DrawCenteredText(g, "P: Duraklat | M: Ses Aç/Kapa", textFont, Brushes.WhiteSmoke, centerX, boxY + 122);
             }
 
             // En yüksek skor bilgisi
             string bestText = $"En Yüksek Skor: {ScoreManager.HighScore}";
-            DrawOutlinedText(g, bestText, centerX, 405, 16, Color.White, Color.Black);
+            DrawOutlinedText(g, bestText, centerX, 415, 16, Color.White, Color.Black);
         }
 
         private void DrawPausedOverlay(Graphics g)
@@ -464,13 +650,13 @@ namespace FlappyBird.Core
             int centerX = ScreenWidth / 2;
 
             // Game Over başlığı
-            DrawOutlinedText(g, "OYUN BİTTİ", centerX, 95, 34, Color.Crimson, Color.Black);
+            DrawOutlinedText(g, "OYUN BİTTİ", centerX, 90, 34, Color.Crimson, Color.Black);
 
             // Skor tablosu paneli
             int panelW = 270;
-            int panelH = 175;
+            int panelH = 185;
             int panelX = centerX - (panelW / 2);
-            int panelY = 150;
+            int panelY = 145;
 
             using (SolidBrush panelBg = new SolidBrush(Color.FromArgb(238, 226, 180)))
             {
@@ -490,11 +676,14 @@ namespace FlappyBird.Core
             using (Font labelFont = new Font("Segoe UI", 10, FontStyle.Bold))
             using (Font valFont = new Font("Impact", 20))
             {
-                g.DrawString("SKOR", labelFont, Brushes.DarkOrange, panelX + 115, panelY + 22);
-                g.DrawString(ScoreManager.CurrentScore.ToString(), valFont, Brushes.Black, panelX + 115, panelY + 40);
+                g.DrawString("SKOR", labelFont, Brushes.DarkOrange, panelX + 115, panelY + 18);
+                g.DrawString(ScoreManager.CurrentScore.ToString(), valFont, Brushes.Black, panelX + 115, panelY + 36);
 
-                g.DrawString("EN YÜKSEK", labelFont, Brushes.DarkOrange, panelX + 115, panelY + 75);
-                g.DrawString(ScoreManager.HighScore.ToString(), valFont, Brushes.Black, panelX + 115, panelY + 93);
+                g.DrawString("EN YÜKSEK", labelFont, Brushes.DarkOrange, panelX + 115, panelY + 70);
+                g.DrawString(ScoreManager.HighScore.ToString(), valFont, Brushes.Black, panelX + 115, panelY + 88);
+
+                // Toplanan Altın
+                g.DrawString($"★ Toplanan Altın: {CollectedCoins}", labelFont, Brushes.SaddleBrown, panelX + 115, panelY + 124);
             }
 
             // Yeni rekor rozeti
@@ -513,7 +702,7 @@ namespace FlappyBird.Core
             // Seviye bilgisi
             using (Font infoFont = new Font("Segoe UI", 9, FontStyle.Italic))
             {
-                g.DrawString($"Ulaşılan Seviye: {Level}", infoFont, Brushes.SaddleBrown, panelX + 115, panelY + 135);
+                g.DrawString($"Ulaşılan Seviye: {Level}", infoFont, Brushes.DimGray, panelX + 115, panelY + 148);
             }
 
             // Tekrar başlatma talimatı

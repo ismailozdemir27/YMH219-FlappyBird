@@ -41,18 +41,19 @@ namespace FlappyBird
                 bmp1.Save(Path.Combine(screenshotsDir, "menu.png"), ImageFormat.Png);
             }
 
-            // 2. Ekran Görüntüsü: Oyun İçi (Gameplay - Mavi Kuş kostümü ile)
+            // 2. Ekran Görüntüsü: Oyun İçi (Gün Batımı Teması + Mavi Kuş + Altın Toplama)
             using (Bitmap bmp2 = new Bitmap(width, height))
             using (Graphics g2 = Graphics.FromImage(bmp2))
             using (GameEngine engine2 = new GameEngine(width, height))
             {
-                engine2.Bird.Skin = BirdSkin.SkyBlue; // Mavi Kuş
+                engine2.CurrentTheme = GameTheme.Sunset; // Gün batımı
+                engine2.Bird.Skin = BirdSkin.SkyBlue;     // Mavi Kuş
                 engine2.Flap(); // Playing moduna geçir
                 for (int i = 0; i < 40; i++)
                 {
                     engine2.Update();
                 }
-                engine2.Bird.Y = 230;
+                engine2.Bird.Y = 220;
                 engine2.Bird.VelocityY = -2f;
                 engine2.ScoreManager.IncrementScore();
                 engine2.ScoreManager.IncrementScore();
@@ -60,24 +61,33 @@ namespace FlappyBird
                 engine2.ScoreManager.IncrementScore();
                 engine2.ScoreManager.IncrementScore(); // Skor: 5
                 engine2.Pipes[0].X = 180;
-                engine2.Pipes[0].TopHeight = 170;
-                engine2.Pipes[1].X = 400;
+                engine2.Pipes[0].TopHeight = 155;
+                if (engine2.Coins.Count > 0)
+                {
+                    engine2.Coins[0].X = 180 + (engine2.Pipes[0].Width / 2f);
+                    engine2.Coins[0].BaseY = 155 + (engine2.Pipes[0].Gap / 2f);
+                    engine2.Coins[0].IsCollected = false;
+                }
+                engine2.Pipes[1].X = 405;
 
                 engine2.Render(g2);
                 bmp2.Save(Path.Combine(screenshotsDir, "gameplay.png"), ImageFormat.Png);
             }
 
-            // 3. Ekran Görüntüsü: Oyun Bitti (Game Over)
+            // 3. Ekran Görüntüsü: Gece Teması ve Oyun Bitti (Game Over)
             using (Bitmap bmp3 = new Bitmap(width, height))
             using (Graphics g3 = Graphics.FromImage(bmp3))
             using (GameEngine engine3 = new GameEngine(width, height))
             {
-                engine3.Bird.Skin = BirdSkin.RubyRed; // Kırmızı Kuş
+                engine3.CurrentTheme = GameTheme.Night; // Gece modu (Yıldızlar + Ay)
+                engine3.Bird.Skin = BirdSkin.GoldenPhoenix; // Altın Anka Kuş
                 engine3.Flap();
-                for (int i = 0; i < 22; i++)
+                for (int i = 0; i < 24; i++)
                 {
                     engine3.ScoreManager.IncrementScore();
                 }
+                typeof(GameEngine).GetProperty("CollectedCoins")?.SetValue(engine3, 14);
+
                 engine3.Bird.Y = height - engine3.Ground.Height - engine3.Bird.Height;
                 engine3.Bird.IsAlive = false;
 
