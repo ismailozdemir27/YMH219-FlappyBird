@@ -146,6 +146,6 @@ YMH219-FlappyBird/
 ## 👤 Öğrenci Bilgileri
 
 - **Adı - Soyadı:** İsmail Özdemir
-- **Öğrenci Numarası:** [Öğrenci Numaranızı Buraya Ekleyiniz]
+- **Öğrenci Numarası:** 250541109
 - **Ders:** Nesne Tabanlı Programlama (YMH 219)
 - **Dönem:** 2026-2027 Güz
